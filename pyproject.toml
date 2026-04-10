@@ -1,0 +1,32 @@
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "root.settings"
+pythonpath = "."
+
+[tool.black]
+line-length = 88
+target-version = ['py313']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+    | \.venv
+    | venv
+    | apps/authentication/migrations
+    | staticfiles                
+    | media                         
+    | logs                       
+    | backups                    
+    | __pycache__
+    | db\.sqlite3                
+    | \.env
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+skip_gitignore = true
+skip = ["migrations", "staticfiles", "media", "logs", "backups", "__pycache__", "db.sqlite3", ".env", "venv", ".venv"]
+
+known_django = ["django"]
+sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
