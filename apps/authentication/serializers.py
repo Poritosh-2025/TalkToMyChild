@@ -77,7 +77,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class ProfileUpdateSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=100, required=False)
-    profile_photo = serializers.URLField(required=False)
+    profile_photo = serializers.ImageField(required=False)
 
 
 class UserProfileSerializer(serializers.ModelSerializer):

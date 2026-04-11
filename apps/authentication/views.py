@@ -3,6 +3,7 @@ from django.shortcuts import render
 # Create your views here.
 from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from common.response import APIResponse
 from .services import AuthService
@@ -20,13 +21,14 @@ from .serializers import (
     ProfileUpdateSerializer,
     UserProfileSerializer,
 )
-from .throttles import (
-    RegisterThrottle,
-    LoginThrottle,
-    OTPResendThrottle,
-    OTPVerifyThrottle,
-    PasswordResetRequestThrottle,
-)
+
+# from .throttles import (
+#     RegisterThrottle,
+#     LoginThrottle,
+#     OTPResendThrottle,
+#     OTPVerifyThrottle,
+#     PasswordResetRequestThrottle,
+# )
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from django.contrib.auth import get_user_model
 
@@ -36,7 +38,7 @@ User = get_user_model()
 @extend_schema(tags=["01. Authentication"], summary="User Registration")
 class RegisterView(generics.GenericAPIView):
     permission_classes = [AllowAny]
-    throttle_classes = [RegisterThrottle]
+    # throttle_classes = [RegisterThrottle]
     serializer_class = RegisterSerializer
 
     def post(self, request):
@@ -61,7 +63,7 @@ class RegisterView(generics.GenericAPIView):
 )
 class ResendOTPView(generics.GenericAPIView):
     permission_classes = [AllowAny]
-    throttle_classes = [OTPResendThrottle]
+    # throttle_classes = [OTPResendThrottle]
     serializer_class = ResendOTPSerializer
 
     def post(self, request):
@@ -81,7 +83,7 @@ class ResendOTPView(generics.GenericAPIView):
 )
 class VerifyOTPView(generics.GenericAPIView):
     permission_classes = [AllowAny]
-    throttle_classes = [OTPVerifyThrottle]
+    # throttle_classes = [OTPVerifyThrottle]
     serializer_class = VerifyOTPSerializer
 
     def post(self, request):
@@ -171,7 +173,7 @@ class TokenRefreshView(APIView):
 class EmailLoginView(generics.GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = EmailPasswordLoginSerializer
-    throttle_classes = [LoginThrottle]
+    # throttle_classes = [LoginThrottle]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -302,7 +304,7 @@ class LogoutView(APIView):
 @extend_schema(tags=["02. Password Management"], summary="Request Password Reset OTP")
 class PasswordResetRequestView(generics.GenericAPIView):
     permission_classes = [AllowAny]
-    throttle_classes = [PasswordResetRequestThrottle]
+    # throttle_classes = [PasswordResetRequestThrottle]
     serializer_class = PasswordResetRequestSerializer
 
     def post(self, request):
@@ -354,10 +356,15 @@ class ChangePasswordView(generics.GenericAPIView):
             return APIResponse.error(str(e), status=400)
 
 
-@extend_schema(tags=["03. User Profile"], summary="Retrieve or Update User Profile")
+@extend_schema(
+    tags=["03. User Profile"],
+    summary="Retrieve or Update User Profile",
+    request=ProfileUpdateSerializer,
+)
 class ProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = UserProfileSerializer
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_object(self):
         return self.request.user

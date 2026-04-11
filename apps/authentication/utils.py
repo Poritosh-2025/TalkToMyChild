@@ -4,6 +4,7 @@ from django.conf import settings
 from django.utils import timezone
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
 import uuid
 from .models import User
 
@@ -116,3 +117,15 @@ def verify_apple_identity_token(identity_token):
         }
     except Exception:
         return None
+
+
+class JWTAuthenticationScheme(OpenApiAuthenticationExtension):
+    target_class = "apps.authentication.utils.JWTAuthentication"
+    name = "BearerAuth"
+
+    def get_security_definition(self, auto_schema):
+        return {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+        }

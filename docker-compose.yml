@@ -37,23 +37,31 @@ services:
       redis:
         condition: service_healthy
 
-  celery_worker:
+  celery_worker:   # MUST be inside services
     build: .
     command: ./entrypoint.sh worker
     env_file:
       - .env
     depends_on:
-      - db
-      - redis
+      web:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  celery_beat:
+  celery_beat:     # MUST be inside services
     build: .
     command: ./entrypoint.sh beat
     env_file:
       - .env
-    depends_on:
-      - db
-      - redis
+    depends_on:    
+      web:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:

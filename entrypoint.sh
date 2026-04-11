@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+echo "Running migrations..."
+python manage.py migrate --noinput
+
 if [ "$1" = "worker" ]; then
     echo "Starting Celery Worker..."
     exec celery -A config worker --loglevel=info --concurrency=4
@@ -10,9 +13,6 @@ if [ "$1" = "beat" ]; then
     echo "Starting Celery Beat..."
     exec celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 fi
-
-echo "Running migrations..."
-python manage.py migrate --noinput
 
 echo "Collecting static files..."
 python manage.py collectstatic --noinput 2>/dev/null || true

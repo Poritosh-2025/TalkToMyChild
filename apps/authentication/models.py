@@ -35,7 +35,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_email_verified = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
-    profile_photo = models.URLField(blank=True, null=True)
+    profile_photo = models.ImageField(upload_to="profile/", null=True, blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="user")
     auth_provider = models.CharField(max_length=10, default="email")
     credit_balance = models.IntegerField(default=0)
