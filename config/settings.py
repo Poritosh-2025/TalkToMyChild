@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     # Local apps
     "common",
     "apps.authentication",
+    "apps.children",
 ]
 SITE_ID = 1
 MIDDLEWARE = [
