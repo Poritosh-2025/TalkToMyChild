@@ -350,6 +350,7 @@ SPECTACULAR_SETTINGS = {
         {"name": "01. Authentication", "description": "Auth APIs"},
         {"name": "02. Password Management", "description": "Password & OTP APIs"},
         {"name": "03. Profile", "description": "User profile APIs"},
+        {"name": "04. Children", "description": "Child management APIs"},
     ],
 }
 

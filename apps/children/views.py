@@ -31,8 +31,10 @@ from .throttles import (
     AvatarUploadThrottle,
     AvatarConfirmThrottle,
 )
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 
+@extend_schema(tags=["04. Children"], summary="List or Create Children")
 class ChildListCreateView(generics.GenericAPIView):
     """
     List all active children or create a new child profile.
@@ -103,6 +105,9 @@ class ChildListCreateView(generics.GenericAPIView):
             return APIResponse.error(str(e), status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema(
+    tags=["04. Children"], summary="Retrieve, Update, or Delete a Child Profile"
+)
 class ChildDetailView(generics.GenericAPIView):
     """
     Retrieve, update, or delete a child profile.
@@ -184,6 +189,10 @@ class ChildDetailView(generics.GenericAPIView):
             return APIResponse.error(str(e), status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema(
+    tags=["04. Children"],
+    summary="Generate Presigned URL for Avatar Upload or Confirm Upload",
+)
 class ChildAvatarView(APIView):
     """
     Generate presigned URL for avatar upload or confirm upload.
@@ -262,6 +271,7 @@ class ChildAvatarView(APIView):
             )
 
 
+@extend_schema(tags=["04. Children"], summary="Get Call History for a Child")
 class ChildCallHistoryView(generics.GenericAPIView):
     """
     Get call history for a specific child.
@@ -321,6 +331,9 @@ class ChildCallHistoryView(generics.GenericAPIView):
         )
 
 
+@extend_schema(
+    tags=["04. Children"], summary="Get Achievements and Learning Stats for a Child"
+)
 class ChildAchievementsView(generics.GenericAPIView):
     """
     Get achievements and learning stats for a child.
@@ -368,6 +381,7 @@ class ChildAchievementsView(generics.GenericAPIView):
         )
 
 
+@extend_schema(tags=["04. Children"], summary="Search Children by Name")
 class ChildSearchView(generics.GenericAPIView):
     """
     Search children by name.
