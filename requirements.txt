@@ -33,3 +33,6 @@ isort
 pre-commit
 gunicorn==21.2.0
 Pillow
+boto3
+botocore
+autopep8

@@ -12,6 +12,7 @@ extend-exclude = '''
     | \.venv
     | venv
     | apps/authentication/migrations
+    | apps/children/migrations
     | staticfiles                
     | media                         
     | logs                       
