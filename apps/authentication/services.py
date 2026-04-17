@@ -12,6 +12,10 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def get_user_by_id(user_id):
     try:
@@ -57,7 +61,7 @@ class AuthService:
 
     @staticmethod
     @transaction.atomic
-    def verify_otp(email, otp_code, otp_type):
+    def verify_otp(email, otp_code, otp_type, referral_code=None):
 
         user = get_user_by_email(email)
         if not user:
@@ -74,6 +78,7 @@ class AuthService:
         if otp.code != otp_code:
             otp.failed_attempts += 1
             otp.save()
+
             raise ValueError(f"Incorrect OTP. {5 - otp.failed_attempts} attempts left.")
 
         otp.is_used = True
@@ -82,6 +87,18 @@ class AuthService:
         if otp_type == "REGISTER_VERIFY":
             user.is_email_verified = True
             user.save()
+            # After user.is_email_verified = True and user.save()
+
+            if referral_code:
+                try:
+                    from apps.referrals.services import ReferralService
+
+                    result = ReferralService.redeem_referral(referral_code, user)
+                    # Credits automatically added via CreditService or fallback
+                    logger.info(f"Referral redeemed: {result}")
+                except ValueError as e:
+                    # Log error but don't fail the verification
+                    logger.error(f"Referral redemption failed: {str(e)}")
             access = generate_access_token(user)
             refresh = generate_refresh_token(user)
             return {"access_token": access, "refresh_token": refresh}

@@ -5,8 +5,8 @@ class ChildrenConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "apps.children"
     label = "children"
-    verbose_name = "Child Profiles"
+    verbose_name = "Child Profiles v2.0"
 
     def ready(self):
-        # Import signals if needed in the future
-        pass
+        # Import signals to ensure they are registered
+        import apps.children.signals  # noqa

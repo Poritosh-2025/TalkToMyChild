@@ -4,12 +4,10 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.core.cache import cache
-from django.utils import timezone
-from datetime import timedelta
 
 
 class S3ClientManager:
-    """Singleton manager for S3 client to avoid recreating connections."""
+    """Singleton manager for S3 client."""
 
     _client = None
 
@@ -50,51 +48,37 @@ def verify_s3_object_exists(key):
         return False
 
 
-def get_s3_object_metadata(key):
-    """Get S3 object metadata (size, content-type, etc.)."""
-    try:
-        client = S3ClientManager.get_client()
-        response = client.head_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=key)
-        return {
-            "size": response.get("ContentLength", 0),
-            "content_type": response.get("ContentType", ""),
-            "last_modified": response.get("LastModified"),
-        }
-    except ClientError:
-        return None
+def get_child_cache_key(child_id, cache_type="intelligence"):
+    """Generate cache key for child data."""
+    return f"child_{cache_type}_{child_id}"
 
 
 def invalidate_child_cache(child_id):
-    """Invalidate all cache keys for a child."""
-    cache.delete(f"achievements_{child_id}")
-    cache.delete(f"child_detail_{child_id}")
+    """Invalidate all cache for a child."""
+    cache.delete(get_child_cache_key(child_id, "intelligence"))
+    cache.delete(get_child_cache_key(child_id, "achievements"))
 
 
-def validate_avatar_key_belongs_to_child(avatar_key, child_id):
-    """Validate that the avatar key belongs to the specified child."""
-    expected_prefix = f"{settings.CHILD_AVATAR_PREFIX}{child_id}/"
-    return avatar_key.startswith(expected_prefix)
+def build_prompt_context(child, subjects, traits, interests, dislikes):
+    """Build the prompt_context string for AI pipeline."""
+    parts = []
 
+    parts.append(f"The child is {child.age} years old and named {child.name}.")
 
-def get_weekly_streak(call_dates):
-    """
-    Calculate weekly streak from list of call dates.
-    Returns number of consecutive days with calls in the last 7 days.
-    """
-    if not call_dates:
-        return 0
+    if subjects:
+        subject_list = ", ".join(subjects)
+        parts.append(f"He/She is studying {subject_list}.")
 
-    from datetime import date, timedelta
+    if traits:
+        trait_list = ", ".join(traits)
+        parts.append(f"His/Her personality is {trait_list}.")
 
-    unique_dates = set(call_dates)
-    today = date.today()
-    streak = 0
+    if interests:
+        interest_list = ", ".join(interests)
+        parts.append(f"He/She is interested in {interest_list}.")
 
-    for i in range(7):
-        check_date = today - timedelta(days=i)
-        if check_date in unique_dates:
-            streak += 1
-        else:
-            break
+    if dislikes:
+        dislike_list = ", ".join(dislikes)
+        parts.append(f"Avoid topics related to {dislike_list}.")
 
-    return streak
+    return " ".join(parts)

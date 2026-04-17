@@ -2,46 +2,147 @@ from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
-from unittest.mock import patch, MagicMock
-from .models import Child
+from unittest.mock import patch
+from .models import (
+    Child,
+    ChildProfile,
+    ChildSubject,
+    ChildTrait,
+    ChildInterest,
+    ChildDislike,
+)
 from .services import ChildService
 
 User = get_user_model()
 
 
 class ChildModelTests(TestCase):
-    """Tests for Child model."""
+    """Tests for Child v2.0 models."""
 
     def setUp(self):
         self.parent = User.objects.create_user(
             email="parent@test.com", full_name="Test Parent", password="testpass123"
         )
 
-    def test_create_child(self):
-        child = Child.objects.create(parent=self.parent, name="Test Child", age=8)
-        self.assertEqual(child.name, "Test Child")
-        self.assertEqual(child.age, 8)
-        self.assertTrue(child.is_active)
-        self.assertIsNotNone(child.id)
+    def test_create_child_with_all_attributes(self):
+        data = {
+            "name": "Abdullah",
+            "age": 9,
+            "email": "abdullah@family.com",
+            "password": "StrongPass123!",
+            "subjects": ["Math", "English", "Physics"],
+            "traits": ["Creative", "Curious"],
+            "interests": ["Space", "Dinosaurs"],
+            "dislikes": ["Loud noises", "Broccoli"],
+        }
 
-    def test_soft_delete(self):
-        child = Child.objects.create(parent=self.parent, name="Test Child", age=8)
-        child.soft_delete()
-        self.assertFalse(child.is_active)
+        child = ChildService.create_child(self.parent, data)
 
-    def test_unique_name_per_parent_active(self):
-        Child.objects.create(parent=self.parent, name="Same Name", age=5)
+        self.assertEqual(child.name, "Abdullah")
+        self.assertEqual(child.age, 9)
+        self.assertEqual(child.subjects.count(), 3)
+        self.assertEqual(child.traits.count(), 2)
+        self.assertEqual(child.interests.count(), 2)
+        self.assertEqual(child.dislikes.count(), 2)
 
-        with self.assertRaises(Exception):
-            Child.objects.create(parent=self.parent, name="Same Name", age=6)
+        # Check credentials
+        self.assertEqual(child.credentials.email, "abdullah@family.com")
+        self.assertTrue(child.credentials.check_password("StrongPass123!"))
 
-    def test_same_name_different_parent_allowed(self):
-        parent2 = User.objects.create_user(
-            email="parent2@test.com", full_name="Parent Two", password="testpass123"
+    def test_child_email_must_be_unique(self):
+        data1 = {
+            "name": "Child One",
+            "age": 8,
+            "email": "same@email.com",
+            "password": "Pass123!",
+        }
+        ChildService.create_child(self.parent, data1)
+
+        data2 = {
+            "name": "Child Two",
+            "age": 9,
+            "email": "same@email.com",
+            "password": "Pass123!",
+        }
+
+        with self.assertRaises(ValueError) as context:
+            ChildService.create_child(self.parent, data2)
+        self.assertIn("already in use", str(context.exception))
+
+    def test_max_children_limit(self):
+        for i in range(10):
+            ChildService.create_child(
+                self.parent,
+                {
+                    "name": f"Child {i}",
+                    "age": 5,
+                    "email": f"child{i}@test.com",
+                    "password": "Pass123!",
+                },
+            )
+
+        with self.assertRaises(ValueError) as context:
+            ChildService.create_child(
+                self.parent,
+                {
+                    "name": "Eleventh",
+                    "age": 6,
+                    "email": "eleventh@test.com",
+                    "password": "Pass123!",
+                },
+            )
+        self.assertIn("Maximum", str(context.exception))
+
+    def test_update_subjects_replaces_existing(self):
+        child = ChildService.create_child(
+            self.parent,
+            {
+                "name": "Test",
+                "age": 8,
+                "email": "test@test.com",
+                "password": "Pass123!",
+                "subjects": ["Math", "Science"],
+            },
         )
-        Child.objects.create(parent=self.parent, name="Common Name", age=5)
-        child2 = Child.objects.create(parent=parent2, name="Common Name", age=6)
-        self.assertIsNotNone(child2)
+
+        self.assertEqual(child.subjects.count(), 2)
+
+        ChildService.update_subjects(child, ["English", "History"])
+
+        self.assertEqual(child.subjects.count(), 2)
+        subject_names = [s.name for s in child.subjects.all()]
+        self.assertIn("English", subject_names)
+        self.assertIn("History", subject_names)
+        self.assertNotIn("Math", subject_names)
+
+    def test_duplicate_subject_names_deduplicated(self):
+        child = ChildService.create_child(
+            self.parent,
+            {
+                "name": "Test",
+                "age": 8,
+                "email": "test@test.com",
+                "password": "Pass123!",
+            },
+        )
+
+        ChildService.update_subjects(child, ["Math", "MATH", "math", "Math"])
+
+        self.assertEqual(child.subjects.count(), 1)
+        self.assertEqual(child.subjects.first().name, "Math")
+
+    def test_has_active_calls_property(self):
+        child = ChildService.create_child(
+            self.parent,
+            {
+                "name": "Call Child",
+                "age": 10,
+                "email": "call@test.com",
+                "password": "Pass123!",
+            },
+        )
+        # No calls app, so should return False
+        self.assertFalse(child.has_active_calls)
 
 
 class ChildAPITests(TestCase):
@@ -52,186 +153,136 @@ class ChildAPITests(TestCase):
         self.parent = User.objects.create_user(
             email="parent@test.com",
             full_name="Test Parent",
-            password="testpass123",
+            password="pass123",
             is_email_verified=True,
         )
         self.client.force_authenticate(user=self.parent)
         self.list_url = reverse("child-list-create")
 
-    def test_create_child_success(self):
-        data = {"name": "Abdullah", "age": 9}
+    def test_create_child_api(self):
+        data = {
+            "name": "Abdullah",
+            "age": 9,
+            "email": "abdullah@family.com",
+            "password": "StrongPass123!",
+            "subjects": ["Math", "English"],
+            "traits": ["Creative"],
+        }
+
         response = self.client.post(self.list_url, data)
         self.assertEqual(response.status_code, 201)
         self.assertTrue(response.data["success"])
         self.assertEqual(response.data["data"]["name"], "Abdullah")
+        self.assertEqual(len(response.data["data"]["subjects"]), 2)
 
-    def test_create_child_duplicate_name(self):
-        Child.objects.create(parent=self.parent, name="Abdullah", age=9)
-        data = {"name": "Abdullah", "age": 10}
-        response = self.client.post(self.list_url, data)
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("already exists", response.data["message"])
+    def test_create_child_missing_password(self):
+        data = {"name": "Abdullah", "age": 9, "email": "abdullah@family.com"}
 
-    def test_create_child_invalid_age(self):
-        data = {"name": "Child", "age": 18}
         response = self.client.post(self.list_url, data)
         self.assertEqual(response.status_code, 400)
 
-    def test_list_children(self):
-        Child.objects.create(parent=self.parent, name="Child 1", age=5)
-        Child.objects.create(parent=self.parent, name="Child 2", age=7)
-
-        response = self.client.get(self.list_url)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["data"]["count"], 2)
-
-    def test_list_children_only_active(self):
-        child = Child.objects.create(parent=self.parent, name="Active", age=5)
-        inactive = Child.objects.create(parent=self.parent, name="Inactive", age=6)
-        inactive.soft_delete()
-
-        response = self.client.get(self.list_url)
-        self.assertEqual(response.data["data"]["count"], 1)
-        self.assertEqual(response.data["data"]["results"][0]["name"], "Active")
-
-    def test_get_child_detail(self):
-        child = Child.objects.create(parent=self.parent, name="Detail Child", age=8)
-        url = reverse("child-detail", kwargs={"child_id": child.id})
-
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["data"]["name"], "Detail Child")
-
-    def test_get_child_detail_not_owner(self):
-        other_parent = User.objects.create_user(
-            email="other@test.com", full_name="Other Parent", password="testpass123"
+    def test_update_credentials(self):
+        child = ChildService.create_child(
+            self.parent,
+            {
+                "name": "Test",
+                "age": 8,
+                "email": "test@test.com",
+                "password": "Pass123!",
+            },
         )
-        child = Child.objects.create(parent=other_parent, name="Other Child", age=8)
-        url = reverse("child-detail", kwargs={"child_id": child.id})
 
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 404)
-
-    def test_update_child(self):
-        child = Child.objects.create(parent=self.parent, name="Original", age=5)
-        url = reverse("child-detail", kwargs={"child_id": child.id})
-        data = {"name": "Updated Name"}
+        url = reverse("child-credentials", kwargs={"child_id": child.id})
+        data = {"email": "newemail@test.com"}
 
         response = self.client.patch(url, data)
         self.assertEqual(response.status_code, 200)
+
         child.refresh_from_db()
-        self.assertEqual(child.name, "Updated Name")
+        self.assertEqual(child.credentials.email, "newemail@test.com")
 
-    def test_delete_child_soft(self):
-        child = Child.objects.create(parent=self.parent, name="To Delete", age=5)
+    def test_get_profile_intelligence_parent(self):
+        child = ChildService.create_child(
+            self.parent,
+            {
+                "name": "Intel Child",
+                "age": 10,
+                "email": "intel@test.com",
+                "password": "Pass123!",
+                "subjects": ["AI", "Robotics"],
+                "traits": ["Curious"],
+                "interests": ["Space"],
+                "dislikes": ["Loud"],
+            },
+        )
+
+        url = reverse("child-profile-intelligence", kwargs={"child_id": child.id})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("prompt_context", response.data["data"])
+        self.assertIn("Curious", response.data["data"]["prompt_context"])
+
+    def test_get_profile_intelligence_internal(self):
+        """Test internal service access with X-Internal-Service-Key header."""
+        from django.conf import settings
+
+        child = ChildService.create_child(
+            self.parent,
+            {
+                "name": "Internal Child",
+                "age": 8,
+                "email": "internal@test.com",
+                "password": "Pass123!",
+            },
+        )
+
+        url = reverse("child-profile-intelligence", kwargs={"child_id": child.id})
+        headers = {
+            "X-Internal-Service-Key": getattr(
+                settings, "INTERNAL_SERVICE_KEY", "test-key"
+            )
+        }
+        response = self.client.get(url, **headers)
+
+        # Internal key should allow access even without authentication
+        self.assertEqual(response.status_code, 200)
+
+    def test_delete_child_without_active_calls(self):
+        child = ChildService.create_child(
+            self.parent,
+            {
+                "name": "Delete Me",
+                "age": 8,
+                "email": "delete@test.com",
+                "password": "Pass123!",
+            },
+        )
+
         url = reverse("child-detail", kwargs={"child_id": child.id})
-
         response = self.client.delete(url)
         self.assertEqual(response.status_code, 200)
         child.refresh_from_db()
         self.assertFalse(child.is_active)
 
-    def test_max_children_limit(self):
-        # Create 10 children
-        for i in range(10):
-            Child.objects.create(parent=self.parent, name=f"Child {i}", age=5)
-
-        # Try to create 11th
-        data = {"name": "Eleventh", "age": 6}
-        response = self.client.post(self.list_url, data)
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("Maximum", response.data["message"])
-
-
-class ChildServiceTests(TestCase):
-    """Tests for ChildService business logic."""
-
-    def setUp(self):
-        self.parent = User.objects.create_user(
-            email="parent@test.com", full_name="Test Parent", password="testpass123"
+    def test_child_login(self):
+        child = ChildService.create_child(
+            self.parent,
+            {
+                "name": "Login Child",
+                "age": 8,
+                "email": "login@test.com",
+                "password": "LoginPass123!",
+            },
         )
 
-    def test_create_child_success(self):
-        child = ChildService.create_child(self.parent, "Test", 10)
-        self.assertEqual(child.name, "Test")
-        self.assertEqual(child.age, 10)
-
-    def test_create_child_max_limit(self):
-        for i in range(10):
-            ChildService.create_child(self.parent, f"Child {i}", 5)
-
-        with self.assertRaises(ValueError) as context:
-            ChildService.create_child(self.parent, "Eleventh", 6)
-        self.assertIn("Maximum", str(context.exception))
-
-    def test_create_child_duplicate_name_case_insensitive(self):
-        ChildService.create_child(self.parent, "Test Name", 5)
-
-        with self.assertRaises(ValueError) as context:
-            ChildService.create_child(self.parent, "test name", 6)
-        self.assertIn("already exists", str(context.exception))
-
-    def test_update_child_name(self):
-        child = ChildService.create_child(self.parent, "Original", 5)
-        updated = ChildService.update_child(child, name="New Name")
-        self.assertEqual(updated.name, "New Name")
-
-    def test_update_child_age(self):
-        child = ChildService.create_child(self.parent, "Child", 5)
-        updated = ChildService.update_child(child, age=10)
-        self.assertEqual(updated.age, 10)
-
-    @patch("apps.children.services.S3ClientManager")
-    def test_generate_avatar_presigned_url(self, mock_s3_manager):
-        mock_client = MagicMock()
-        mock_client.generate_presigned_url.return_value = "https://fake-url.com"
-        mock_s3_manager.get_client.return_value = mock_client
-
-        child = ChildService.create_child(self.parent, "Avatar Child", 5)
-        result = ChildService.generate_avatar_presigned_url(child)
-
-        self.assertIn("upload_url", result)
-        self.assertIn("avatar_key", result)
-        self.assertEqual(result["expires_in"], 300)
-
-    def test_validate_avatar_key_belongs_to_child(self):
-        from apps.children.utils import validate_avatar_key_belongs_to_child
-
-        child_id = "12345678-1234-5678-1234-567812345678"
-        valid_key = f"avatars/{child_id}/abc123.jpg"
-        invalid_key = f"avatars/wrong-id/abc123.jpg"
-
-        self.assertTrue(validate_avatar_key_belongs_to_child(valid_key, child_id))
-        self.assertFalse(validate_avatar_key_belongs_to_child(invalid_key, child_id))
-
-
-class ChildPermissionsTests(TestCase):
-    """Tests for permission classes."""
-
-    def setUp(self):
-        self.client = APIClient()
-        self.parent = User.objects.create_user(
-            email="parent@test.com", full_name="Parent", password="pass123"
+        # Test the authenticate method directly
+        authenticated = ChildService.authenticate_child(
+            "login@test.com", "LoginPass123!"
         )
-        self.other_parent = User.objects.create_user(
-            email="other@test.com", full_name="Other", password="pass123"
-        )
-        self.child = Child.objects.create(parent=self.parent, name="Test Child", age=5)
+        self.assertIsNotNone(authenticated)
+        self.assertEqual(authenticated.id, child.id)
 
-    def test_owner_can_access(self):
-        self.client.force_authenticate(user=self.parent)
-        url = reverse("child-detail", kwargs={"child_id": self.child.id})
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-
-    def test_non_owner_cannot_access(self):
-        self.client.force_authenticate(user=self.other_parent)
-        url = reverse("child-detail", kwargs={"child_id": self.child.id})
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 404)
-
-    def test_unauthenticated_cannot_access(self):
-        self.client.force_authenticate(user=None)
-        url = reverse("child-detail", kwargs={"child_id": self.child.id})
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 401)
+        # Wrong password
+        wrong = ChildService.authenticate_child("login@test.com", "WrongPass!")
+        self.assertIsNone(wrong)

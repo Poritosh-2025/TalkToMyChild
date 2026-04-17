@@ -5,16 +5,14 @@ from django.core.validators import (
     MaxValueValidator,
     MinLengthValidator,
 )
+from django.contrib.auth.hashers import make_password, check_password
 from django.conf import settings
-from django.utils import timezone
 
 
 class Child(models.Model):
     """
     Child profile model - scoped to parent user (tenant).
     Soft delete pattern: is_active=False preserves call history.
-
-    Security: All queries must filter by parent to ensure tenant isolation.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -54,7 +52,6 @@ class Child(models.Model):
             models.Index(fields=["parent", "name"], name="idx_parent_name"),
         ]
         constraints = [
-            # Unique name per parent among active children only (case-insensitive)
             models.UniqueConstraint(
                 fields=["parent", "name"],
                 condition=models.Q(is_active=True),
@@ -80,8 +77,6 @@ class Child(models.Model):
         """Generate full S3 URL from avatar key."""
         if not self.avatar:
             return None
-        from django.conf import settings
-
         return (
             f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{self.avatar}"
         )
@@ -89,6 +84,135 @@ class Child(models.Model):
     @property
     def has_active_calls(self):
         """Check if child has any active/in-progress calls."""
-        from apps.calls.models import CallSession
+        try:
+            from apps.calls.models import CallSession
 
-        return CallSession.objects.filter(child=self, status="active").exists()
+            return CallSession.objects.filter(child=self, status="active").exists()
+        except ImportError:
+            return False  # Calls app not yet installed
+
+
+class ChildProfile(models.Model):
+    """
+    Child login credentials - separate from Child model for clean separation.
+    One-to-one with Child for authentication.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    child = models.OneToOneField(
+        Child, on_delete=models.CASCADE, related_name="credentials"
+    )
+    email = models.EmailField(unique=True, db_index=True)
+    password = models.CharField(max_length=128)  # Hashed password
+    is_email_verified = models.BooleanField(default=True)  # Pre-verified by parent
+    last_login = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["email"], name="idx_child_email"),
+        ]
+
+    def __str__(self):
+        return f"Credentials for {self.child.name} ({self.email})"
+
+    def set_password(self, raw_password):
+        """Hash and set the password."""
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        """Verify the password."""
+        return check_password(raw_password, self.password)
+
+
+class ChildSubject(models.Model):
+    """Subject preferences - unlimited, parent-defined."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    child = models.ForeignKey(Child, on_delete=models.CASCADE, related_name="subjects")
+    name = models.CharField(max_length=100, validators=[MinLengthValidator(1)])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["child"], name="idx_subject_child"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["child", "name"], name="unique_subject_per_child"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.child.name}: {self.name}"
+
+
+class ChildTrait(models.Model):
+    """Personality traits - unlimited, parent-defined."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    child = models.ForeignKey(Child, on_delete=models.CASCADE, related_name="traits")
+    name = models.CharField(max_length=100, validators=[MinLengthValidator(1)])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["child"], name="idx_trait_child"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["child", "name"], name="unique_trait_per_child"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.child.name}: {self.name}"
+
+
+class ChildInterest(models.Model):
+    """Interests - unlimited, parent-defined."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    child = models.ForeignKey(Child, on_delete=models.CASCADE, related_name="interests")
+    name = models.CharField(max_length=100, validators=[MinLengthValidator(1)])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["child"], name="idx_interest_child"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["child", "name"], name="unique_interest_per_child"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.child.name}: {self.name}"
+
+
+class ChildDislike(models.Model):
+    """Dislikes - unlimited, parent-defined."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    child = models.ForeignKey(Child, on_delete=models.CASCADE, related_name="dislikes")
+    name = models.CharField(max_length=100, validators=[MinLengthValidator(1)])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["child"], name="idx_dislike_child"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["child", "name"], name="unique_dislike_per_child"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.child.name}: {self.name}"

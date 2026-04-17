@@ -89,6 +89,20 @@ class VerifyOTPView(generics.GenericAPIView):
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        referral_code = request.data.get("referral_code")
+
+        try:
+            result = AuthService.verify_otp(
+                email=serializer.validated_data["email"],
+                otp_code=serializer.validated_data["otp"],
+                otp_type=serializer.validated_data["otp_type"],
+                referral_code=referral_code,  # pass it here
+            )
+            # ... rest of your response handling (same as before)
+        except ValueError as e:
+            return APIResponse.error(str(e), status=400)
+
         try:
             data = serializer.validated_data
 

@@ -437,17 +437,22 @@ SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 
 
-# Child app settings
+# Child app v2.0 settings
 CHILD_MAX_PER_PARENT = 10
+CHILD_AVATAR_BUCKET = "talktomychild-avatars"
 CHILD_AVATAR_PREFIX = "avatars/"
-CHILD_AVATAR_TTL = 300  # 5 minutes in seconds
+CHILD_AVATAR_TTL = 300  # presigned URL TTL seconds
+CHILD_PROFILE_CACHE_TTL = 300  # profile intelligence Redis TTL seconds
 
 # AWS S3 settings (for avatar uploads)
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+# AWS S3 settings
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", "talktomychild-avatars")
 AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")
-AWS_S3_SIGNATURE_VERSION = "s3v4"
+
+# Internal service key for AI pipeline
+INTERNAL_SERVICE_KEY = os.getenv("INTERNAL_SERVICE_KEY", "change-me-in-production")
 
 # Cache settings (for achievements)
 
@@ -455,6 +460,27 @@ AWS_S3_SIGNATURE_VERSION = "s3v4"
 if os.getenv("USE_S3", "False") == "True":
     DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
     AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+
+
+# Referral app settings
+REFERRAL_CREDIT_AMOUNT = 2  # credits issued per successful referral (each side)
+REFERRAL_EXPIRY_DAYS = 7  # days before a pending referral expires
+REFERRAL_CODE_LENGTH = 8  # length of auto-generated code
+
+# Frontend URL for generating share links
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://talktomychild.com")
+
+# Internal service key for secure internal API calls
+INTERNAL_SERVICE_KEY = os.getenv("INTERNAL_SERVICE_KEY", "change-me-in-production")
+
+# Celery beat schedule for referral expiry
+CELERY_BEAT_SCHEDULE = {
+    # ... existing tasks ...
+    "expire-pending-referrals": {
+        "task": "apps.referrals.tasks.expire_pending_referrals",
+        "schedule": 3600,  # every hour
+    },
+}
 
 # ── Logging ──
 LOG_DIR = BASE_DIR / "logs"

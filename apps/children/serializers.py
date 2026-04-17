@@ -1,62 +1,143 @@
 from rest_framework import serializers
 from django.core.validators import MinLengthValidator
-from .models import Child
-from .validators import validate_s3_key
+from .models import (
+    Child,
+    ChildProfile,
+    ChildSubject,
+    ChildTrait,
+    ChildInterest,
+    ChildDislike,
+)
+from .validators import validate_child_password, validate_attribute_name
 
 
-class ChildCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating a new child profile."""
+# ========== Attribute Serializers ==========
 
+
+class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Child
-        fields = ["id", "name", "age", "created_at"]
+        model = ChildSubject
+        fields = ["id", "name", "created_at"]
         read_only_fields = ["id", "created_at"]
 
-    def validate_name(self, value):
-        """Additional name validation."""
-        value = value.strip()
-        if len(value) < 2:
-            raise serializers.ValidationError(
-                "Name must be at least 2 characters long."
-            )
-        if len(value) > 100:
-            raise serializers.ValidationError("Name must be less than 100 characters.")
-        return value
 
-    def validate_age(self, value):
-        """Validate age range."""
-        if not 1 <= value <= 17:
-            raise serializers.ValidationError("Age must be between 1 and 17.")
-        return value
+class TraitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChildTrait
+        fields = ["id", "name", "created_at"]
+        read_only_fields = ["id", "created_at"]
 
 
-class ChildUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for updating child profile (partial updates allowed)."""
+class InterestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChildInterest
+        fields = ["id", "name", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
+class DislikeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChildDislike
+        fields = ["id", "name", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
+# ========== Credential Serializers ==========
+
+
+class ChildCredentialsSerializer(serializers.ModelSerializer):
+    """Serializer for child login credentials."""
+
+    last_login = serializers.DateTimeField(read_only=True)
 
     class Meta:
-        model = Child
-        fields = ["name", "age"]
-        extra_kwargs = {"name": {"required": False}, "age": {"required": False}}
+        model = ChildProfile
+        fields = ["email", "is_email_verified", "last_login", "created_at"]
+        read_only_fields = ["is_email_verified", "last_login", "created_at"]
+
+
+class ChildCredentialsUpdateSerializer(serializers.Serializer):
+    """Serializer for updating child credentials."""
+
+    email = serializers.EmailField(required=False)
+    password = serializers.CharField(
+        required=False, validators=[validate_child_password]
+    )
+
+    def validate_email(self, value):
+        if value:
+            return value.lower()
+        return value
+
+
+# ========== Child Serializers ==========
+
+
+class ChildCreateSerializer(serializers.Serializer):
+    """Serializer for creating a new child profile with all attributes."""
+
+    # Required fields
+    name = serializers.CharField(max_length=100, validators=[MinLengthValidator(2)])
+    age = serializers.IntegerField(min_value=1, max_value=17)
+    email = serializers.EmailField()
+    password = serializers.CharField(validators=[validate_child_password])
+
+    # Optional profile intelligence
+    subjects = serializers.ListField(
+        child=serializers.CharField(max_length=100), required=False, default=list
+    )
+    traits = serializers.ListField(
+        child=serializers.CharField(max_length=100), required=False, default=list
+    )
+    interests = serializers.ListField(
+        child=serializers.CharField(max_length=100), required=False, default=list
+    )
+    dislikes = serializers.ListField(
+        child=serializers.CharField(max_length=100), required=False, default=list
+    )
+
+    def validate_email(self, value):
+        return value.lower()
+
+    def validate_name(self, value):
+        return value.strip()
+
+    def validate_subjects(self, value):
+        return [validate_attribute_name(v) for v in value]
+
+    def validate_traits(self, value):
+        return [validate_attribute_name(v) for v in value]
+
+    def validate_interests(self, value):
+        return [validate_attribute_name(v) for v in value]
+
+    def validate_dislikes(self, value):
+        return [validate_attribute_name(v) for v in value]
+
+
+class ChildUpdateSerializer(serializers.Serializer):
+    """Serializer for updating child profile (partial updates)."""
+
+    name = serializers.CharField(
+        max_length=100, validators=[MinLengthValidator(2)], required=False
+    )
+    age = serializers.IntegerField(min_value=1, max_value=17, required=False)
 
     def validate_name(self, value):
         if value:
-            value = value.strip()
-            if len(value) < 2:
-                raise serializers.ValidationError(
-                    "Name must be at least 2 characters long."
-                )
-        return value
-
-    def validate_age(self, value):
-        if value and not 1 <= value <= 17:
-            raise serializers.ValidationError("Age must be between 1 and 17.")
+            return value.strip()
         return value
 
 
 class ChildDetailSerializer(serializers.ModelSerializer):
-    """Serializer for returning child details with computed fields."""
+    """Serializer for returning child details with all attributes."""
 
     avatar_url = serializers.SerializerMethodField()
+    credentials = ChildCredentialsSerializer(source="credentials", read_only=True)
+    subjects = serializers.SerializerMethodField()
+    traits = serializers.SerializerMethodField()
+    interests = serializers.SerializerMethodField()
+    dislikes = serializers.SerializerMethodField()
     last_call_at = serializers.SerializerMethodField()
     has_active_calls = serializers.BooleanField(read_only=True)
 
@@ -68,40 +149,119 @@ class ChildDetailSerializer(serializers.ModelSerializer):
             "age",
             "avatar_url",
             "is_active",
-            "created_at",
-            "updated_at",
+            "credentials",
+            "subjects",
+            "traits",
+            "interests",
+            "dislikes",
             "last_call_at",
             "has_active_calls",
+            "created_at",
+            "updated_at",
         ]
 
     def get_avatar_url(self, obj):
         return obj.avatar_url
 
+    def get_subjects(self, obj):
+        return [s.name for s in obj.subjects.all().order_by("name")]
+
+    def get_traits(self, obj):
+        return [t.name for t in obj.traits.all().order_by("name")]
+
+    def get_interests(self, obj):
+        return [i.name for i in obj.interests.all().order_by("name")]
+
+    def get_dislikes(self, obj):
+        return [d.name for d in obj.dislikes.all().order_by("name")]
+
     def get_last_call_at(self, obj):
-        """Get last call timestamp from annotation."""
         return getattr(obj, "last_call_at", None)
 
 
 class ChildListSerializer(serializers.ModelSerializer):
-    """Serializer for listing children (lightweight)."""
+    """Serializer for listing children (lightweight for dashboard)."""
 
     avatar_url = serializers.SerializerMethodField()
+    login_email = serializers.SerializerMethodField()
     last_call_at = serializers.SerializerMethodField()
+    attribute_counts = serializers.SerializerMethodField()
 
     class Meta:
         model = Child
-        fields = ["id", "name", "age", "avatar_url", "last_call_at"]
+        fields = [
+            "id",
+            "name",
+            "age",
+            "avatar_url",
+            "login_email",
+            "last_call_at",
+            "attribute_counts",
+        ]
 
     def get_avatar_url(self, obj):
         return obj.avatar_url
 
+    def get_login_email(self, obj):
+        if hasattr(obj, "credentials"):
+            return obj.credentials.email
+        return None
+
     def get_last_call_at(self, obj):
         return getattr(obj, "last_call_at", None)
 
+    def get_attribute_counts(self, obj):
+        return {
+            "subjects": obj.subjects.count(),
+            "traits": obj.traits.count(),
+            "interests": obj.interests.count(),
+            "dislikes": obj.dislikes.count(),
+        }
+
+
+# ========== Attribute Update Serializers ==========
+
+
+class SubjectsUpdateSerializer(serializers.Serializer):
+    subjects = serializers.ListField(
+        child=serializers.CharField(max_length=100), required=True
+    )
+
+    def validate_subjects(self, value):
+        return [validate_attribute_name(v) for v in set(value)]
+
+
+class TraitsUpdateSerializer(serializers.Serializer):
+    traits = serializers.ListField(
+        child=serializers.CharField(max_length=100), required=True
+    )
+
+    def validate_traits(self, value):
+        return [validate_attribute_name(v) for v in set(value)]
+
+
+class InterestsUpdateSerializer(serializers.Serializer):
+    interests = serializers.ListField(
+        child=serializers.CharField(max_length=100), required=True
+    )
+
+    def validate_interests(self, value):
+        return [validate_attribute_name(v) for v in set(value)]
+
+
+class DislikesUpdateSerializer(serializers.Serializer):
+    dislikes = serializers.ListField(
+        child=serializers.CharField(max_length=100), required=True
+    )
+
+    def validate_dislikes(self, value):
+        return [validate_attribute_name(v) for v in set(value)]
+
+
+# ========== Avatar Serializers ==========
+
 
 class AvatarUploadRequestSerializer(serializers.Serializer):
-    """Request serializer for generating presigned URL."""
-
     content_type = serializers.CharField(max_length=50, default="image/jpeg")
 
     def validate_content_type(self, value):
@@ -112,76 +272,50 @@ class AvatarUploadRequestSerializer(serializers.Serializer):
 
 
 class AvatarUploadResponseSerializer(serializers.Serializer):
-    """Response after generating presigned URL."""
-
     upload_url = serializers.URLField()
     avatar_key = serializers.CharField()
     expires_in = serializers.IntegerField()
 
 
 class AvatarConfirmSerializer(serializers.Serializer):
-    """Request serializer for confirming avatar upload."""
+    avatar_key = serializers.CharField(max_length=1024)
 
-    avatar_key = serializers.CharField(max_length=1024, validators=[validate_s3_key])
+    def validate_avatar_key(self, value):
+        from .validators import validate_s3_key
 
-
-class CallHistoryQuerySerializer(serializers.Serializer):
-    """Query parameters for call history."""
-
-    limit = serializers.IntegerField(min_value=1, max_value=100, default=50)
-    offset = serializers.IntegerField(min_value=0, default=0)
+        validate_s3_key(value)
+        return value
 
 
-class CallHistoryEntrySerializer(serializers.Serializer):
-    """Call history entry serializer (placeholder until calls app is ready)."""
-
-    id = serializers.UUIDField()
-    character_name = serializers.CharField()
-    character_icon = serializers.CharField(required=False, allow_blank=True)
-    duration_seconds = serializers.IntegerField()
-    started_at = serializers.DateTimeField()
-    ended_at = serializers.DateTimeField()
-    status = serializers.CharField()
+# ========== Profile Intelligence Serializer ==========
 
 
-class CallHistoryResponseSerializer(serializers.Serializer):
-    """Call history response structure."""
+class ProfileIntelligenceSerializer(serializers.Serializer):
+    """Serializer for AI pipeline payload."""
 
     child_id = serializers.UUIDField()
-    child_name = serializers.CharField()
-    total_calls = serializers.IntegerField()
-    calls = CallHistoryEntrySerializer(many=True)
-
-
-class SubjectAchievementSerializer(serializers.Serializer):
-    """Subject achievement data."""
-
     name = serializers.CharField()
-    hours = serializers.FloatField()
-    goal = serializers.IntegerField()
-    icon = serializers.CharField()
-    progress_percentage = serializers.SerializerMethodField()
-
-    def get_progress_percentage(self, obj):
-        if obj.get("goal", 0) > 0:
-            return min(100, int((obj.get("hours", 0) / obj["goal"]) * 100))
-        return 0
+    age = serializers.IntegerField()
+    subjects = serializers.ListField(child=serializers.CharField())
+    traits = serializers.ListField(child=serializers.CharField())
+    interests = serializers.ListField(child=serializers.CharField())
+    dislikes = serializers.ListField(child=serializers.CharField())
+    prompt_context = serializers.CharField()
 
 
-class AchievementsResponseSerializer(serializers.Serializer):
-    """Achievements response structure."""
+# ========== Child Login Serializer (for Auth app) ==========
 
-    weekly_streak = serializers.IntegerField()
-    check_in_days = serializers.CharField()
-    total_usage_hours = serializers.FloatField()
-    weekly_goal_hours = serializers.IntegerField()
-    weekly_progress_percentage = serializers.SerializerMethodField()
-    subjects = SubjectAchievementSerializer(many=True)
 
-    def get_weekly_progress_percentage(self, obj):
-        if obj.get("weekly_goal_hours", 0) > 0:
-            return min(
-                100,
-                int((obj.get("total_usage_hours", 0) / obj["weekly_goal_hours"]) * 100),
-            )
-        return 0
+class ChildLoginRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()
+
+
+class ChildLoginResponseSerializer(serializers.Serializer):
+    child_id = serializers.UUIDField()
+    name = serializers.CharField()
+    age = serializers.IntegerField()
+    avatar_url = serializers.CharField(allow_null=True)
+    role = serializers.CharField(default="child")
+    access_token = serializers.CharField()
+    token_type = serializers.CharField(default="Bearer")
