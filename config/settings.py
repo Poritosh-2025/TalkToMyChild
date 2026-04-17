@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "common",
     "apps.authentication",
     "apps.children",
+    "apps.referrals",
 ]
 SITE_ID = 1
 MIDDLEWARE = [
