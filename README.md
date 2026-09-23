@@ -1,93 +1,397 @@
-# mothirahman
+# TalkToMyChild
 
+A backend-focused Django REST API project designed to provide a structured foundation for building scalable web applications with authentication, asynchronous task processing, caching, API documentation, and containerized development.
 
+## 🚀 Overview
 
-## Getting started
+**TalkToMyChild** is a Django-based backend application built with a modular architecture.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+The project focuses on:
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+* RESTful API development
+* Authentication and authorization
+* Background task processing
+* Redis-based caching/message brokering
+* PostgreSQL database integration
+* API schema and documentation
+* Docker-based development
+* Code quality and formatting automation
 
-## Add your files
+The project is structured to make backend features easier to develop, maintain, and extend.
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+---
 
+## ✨ Key Features
+
+### 🔐 Authentication
+
+* JWT-based authentication
+* API-oriented authentication flow
+* Token-based access control
+
+### 🌐 REST API
+
+* Django REST Framework
+* Modular API structure
+* Serializer-based request/response handling
+* API schema generation with `drf-spectacular`
+
+### ⚡ Asynchronous Processing
+
+* Celery for background task execution
+* Redis as the Celery broker/backend component
+* Django Celery Beat for scheduled tasks
+
+### 🗄️ Database
+
+* PostgreSQL support
+* Django ORM
+* Environment-based database configuration
+
+### 🚀 Caching
+
+* Redis integration
+* Django Redis support for application-level caching
+
+### 🐳 Containerization
+
+* Docker support
+* Docker Compose configuration
+* Separate application configuration for containerized development
+
+### 📚 API Documentation
+
+The project uses **drf-spectacular** for generating an OpenAPI schema and API documentation.
+
+### 🧹 Code Quality
+
+Development tooling includes:
+
+* Black
+* isort
+* Flake8
+* autopep8
+* pre-commit
+
+---
+
+## 🛠️ Technology Stack
+
+| Category               | Technology                |
+| ---------------------- | ------------------------- |
+| Language               | Python                    |
+| Framework              | Django                    |
+| API                    | Django REST Framework     |
+| Authentication         | JWT / PyJWT               |
+| Database               | PostgreSQL                |
+| Task Queue             | Celery                    |
+| Message Broker / Cache | Redis                     |
+| Scheduled Tasks        | Django Celery Beat        |
+| API Documentation      | drf-spectacular / OpenAPI |
+| Web Server             | Gunicorn                  |
+| Containerization       | Docker / Docker Compose   |
+| Cloud SDK              | Boto3                     |
+| Code Formatting        | Black / autopep8          |
+| Import Sorting         | isort                     |
+| Linting                | Flake8                    |
+| Git Hooks              | pre-commit                |
+
+---
+
+## 📁 Project Structure
+
+```text
+TalkToMyChild/
+│
+├── apps/
+│   └── Application-specific Django apps
+│
+├── common/
+│   └── Shared/common backend components
+│
+├── config/
+│   └── Project configuration and settings
+│
+├── manage.py
+│
+├── Dockerfile
+├── docker-compose.yml
+├── entrypoint.sh
+├── run.sh
+│
+├── requirements.txt
+├── pyproject.toml
+├── .pre-commit-config.yaml
+├── .flake8
+├── .dockerignore
+├── .gitignore
+│
+└── README.md
 ```
-cd existing_repo
-git remote add origin https://gitlab.betopialimited.com/poritosh/mothirahman.git
-git branch -M main
-git push -uf origin main
+
+---
+
+## ⚙️ Requirements
+
+Before running the project locally, make sure you have:
+
+* Python 3.x
+* PostgreSQL
+* Redis
+* Git
+
+For the containerized setup:
+
+* Docker
+* Docker Compose
+
+---
+
+## 🔧 Installation
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Poritosh-2025/TalkToMyChild.git
+cd TalkToMyChild
 ```
 
-## Integrate with your tools
+### 2. Create a virtual environment
 
-- [ ] [Set up project integrations](https://gitlab.betopialimited.com/poritosh/mothirahman/-/settings/integrations)
+```bash
+python -m venv venv
+```
 
-## Collaborate with your team
+Activate it on Linux/macOS:
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+```bash
+source venv/bin/activate
+```
 
-## Test and Deploy
+Windows:
 
-Use the built-in continuous integration in GitLab.
+```powershell
+venv\Scripts\activate
+```
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+### 3. Install dependencies
 
-***
+```bash
+pip install -r requirements.txt
+```
 
-# Editing this README
+---
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+## 🔑 Environment Configuration
 
-## Suggestions for a good README
+Create the required environment configuration according to the project's settings.
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Typical configuration may include:
 
-## Name
-Choose a self-explaining name for your project.
+```env
+DEBUG=True
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+SECRET_KEY=your-secret-key
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+DATABASE_URL=your-database-url
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+REDIS_URL=redis://localhost:6379/0
+```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+> Do not commit real credentials, API keys, passwords, or secret keys to Git.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+---
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+## 🗄️ Database Setup
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+Run Django migrations:
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+```bash
+python manage.py migrate
+```
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+Create an admin user:
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+```bash
+python manage.py createsuperuser
+```
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+---
 
-## License
-For open source projects, say how it is licensed.
+## ▶️ Running the Project
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Start the Django development server:
+
+```bash
+python manage.py runserver
+```
+
+The API will be available at:
+
+```text
+http://127.0.0.1:8000/
+```
+
+---
+
+## ⚡ Running Celery
+
+Start a Celery worker:
+
+```bash
+celery -A config worker --loglevel=info
+```
+
+If scheduled tasks are configured, Celery Beat can be started with:
+
+```bash
+celery -A config beat --loglevel=info
+```
+
+> The exact Celery application path may depend on the project's configuration.
+
+---
+
+## 🐳 Docker
+
+The project includes Docker and Docker Compose configuration for containerized development.
+
+Build and start the services:
+
+```bash
+docker compose up --build
+```
+
+Run in detached mode:
+
+```bash
+docker compose up -d --build
+```
+
+Stop the services:
+
+```bash
+docker compose down
+```
+
+---
+
+## 📖 API Documentation
+
+The project uses `drf-spectacular` to provide OpenAPI-based API schema generation.
+
+After starting the application, the configured API documentation endpoints can be accessed according to the project's URL configuration.
+
+---
+
+## 🧪 Development & Code Quality
+
+The project includes several tools to maintain consistent code quality.
+
+### Format code
+
+```bash
+black .
+```
+
+### Sort imports
+
+```bash
+isort .
+```
+
+### Lint code
+
+```bash
+flake8 .
+```
+
+### Pre-commit
+
+Install the Git hooks:
+
+```bash
+pre-commit install
+```
+
+Run all configured hooks:
+
+```bash
+pre-commit run --all-files
+```
+
+---
+
+## 🏗️ Architecture
+
+The backend follows a modular Django architecture where application-specific functionality is separated into Django apps while shared functionality is organized under common components.
+
+The project is designed around:
+
+```text
+Client
+   │
+   ▼
+Django REST API
+   │
+   ├── Authentication
+   │
+   ├── Business Logic
+   │
+   ├── PostgreSQL
+   │
+   ├── Redis
+   │
+   └── Celery
+          │
+          └── Background Tasks
+```
+
+This architecture allows long-running or asynchronous operations to be handled outside the main HTTP request-response cycle.
+
+---
+
+## 🔒 Security Considerations
+
+The project uses several backend security-related practices and components, including:
+
+* JWT-based authentication
+* Environment-based secret configuration
+* Django's built-in security mechanisms
+* Token-based API access
+* Separation of configuration from source code
+
+Production deployments should additionally configure appropriate:
+
+* HTTPS
+* Secret management
+* Database security
+* CORS/CSRF policies
+* Allowed hosts
+* Secure cookies
+* Logging and monitoring
+
+---
+
+## 📌 Project Status
+
+This project is under active development.
+
+The repository is primarily focused on backend architecture, API development, asynchronous processing, database integration, and maintainable Django application structure.
+
+---
+
+## 👨‍💻 Developer
+
+**Poritosh Pal**
+
+Backend Developer | Python | Django | REST API
+
+GitHub:
+https://github.com/Poritosh-2025
+
+---
+
+## 📄 License
+
+License information will be added when the project license is defined.
